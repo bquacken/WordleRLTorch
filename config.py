@@ -1,0 +1,10 @@
+params = dict(state_dim=448,
+              embed_dim=32,
+              easy_mode=2309,
+              easy_guess=2309,
+              batch_size=500,
+              actor_lr=1e-3,
+              critic_lr=1e-2,
+              gamma=0.1,
+              schedule_step_size= 2000,
+              parallel_workers=4)
