@@ -52,8 +52,6 @@ class Actor(nn.Module):
         else:
             raise Exception('Invalid Game Mode')
         self.optim = torch.optim.Adam(self.parameters(), lr=params['actor_lr'])
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim, step_size=params['schedule_step_size'],
-                                                         gamma=params['gamma'])
 
         self.encoder.to(self.device)
         for param in self.parameters():
@@ -88,7 +86,6 @@ class Actor(nn.Module):
         actor_loss = actor_loss_fn(acts_advs, logits)
         actor_loss.backward()
         self.optim.step()
-        self.scheduler.step()
         return actor_loss.detach().cpu().numpy()
 
 
@@ -116,8 +113,7 @@ class Critic(nn.Module):
         self.value2 = nn.Linear(self.n_neurons, 1)
 
         self.optim = torch.optim.Adam(self.parameters(), lr=params['critic_lr'])
-        self.scheduler = torch.optim.lr_scheduler.StepLR(self.optim, step_size=params['schedule_step_size'],
-                                                         gamma=params['gamma'])
+
 
         self.encoder.to(self.device)
         for param in self.parameters():
@@ -147,7 +143,6 @@ class Critic(nn.Module):
         critic_loss = critic_loss_fn(returns, values)
         critic_loss.backward()
         self.optim.step()
-        self.scheduler.step()
         return critic_loss.detach().cpu().numpy()
 
 
