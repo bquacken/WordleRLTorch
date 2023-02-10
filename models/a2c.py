@@ -13,7 +13,7 @@ device = torch.device('cpu')
 
 
 def compute_advantages(rewards: torch.Tensor, values: torch.Tensor, dones: torch.Tensor):
-    discount_factor = 0.99
+    discount_factor = 0.9
     with torch.no_grad():
         advantages = torch.zeros(len(rewards))
         advantages[-1] = rewards[-1] - values[-1]
@@ -43,7 +43,7 @@ class Actor(nn.Module):
             param.requires_grad = False
 
         self.n_outputs = 130
-        self.n_neurons = 64
+        self.n_neurons = 128
         self.relu = nn.ReLU()
         self.policy1 = nn.Linear(self.embed_dim, self.n_neurons)
         self.policy2 = nn.Linear(self.n_neurons, self.n_outputs)
@@ -107,7 +107,7 @@ class Critic(nn.Module):
             param.requires_grad = False
 
         self.n_outputs = 130
-        self.n_neurons = 64
+        self.n_neurons = 128
         self.relu = nn.ReLU()
         self.value1 = nn.Linear(self.embed_dim, self.n_neurons)
         self.value2 = nn.Linear(self.n_neurons, 1)

@@ -44,12 +44,13 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True):
 
     para_env = ParallelEnvironments(params['parallel_workers'], mode)
 
+
     rewards_list = []
     first_turn_rewards = []
     actor_loss_list = []
     critic_loss_list = []
 
-    for _ in tqdm(range(epochs)):
+    for ep in tqdm(range(1, epochs + 1)):
         para_env.load_weights(actor.state_dict(), critic.state_dict())
         memory, rewards, first_rewards = para_env.parallel_simulate(batch_size, answers)
 
@@ -60,9 +61,21 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True):
         critic_loss_list.append(critic_loss)
         rewards_list += rewards
         first_turn_rewards += first_rewards
-        if epochs % 4000 == 0:
-            torch.save(actor.state_dict(), f'models/model_weights/actor_temp_{int(epochs // 4000)}')
-            torch.save(critic.state_dict(), f'models/model_weights/critic_temp_{int(epochs // 4000)}')
+        if ep % 4000 == 0:
+            if (np.mean(rewards_list[-200000:]) < np.mean(rewards_list[-400000:-200000]) + 0.1):
+                print('Adjusting Learning Rate...')
+                for g in actor.optim.param_groups:
+                    g['lr'] *= params['gamma']
+                for g in critic.optim.param_groups:
+                    g['lr'] *= params['gamma']
+            torch.save(actor.state_dict(), f'models/model_weights/actor_temp_{int(ep // 4000)}')
+            torch.save(critic.state_dict(), f'models/model_weights/critic_temp_{int(ep // 4000)}')
+            print(f'benchmark {ep // 4000}')
+            actor.cpu()
+            actor.word_matrix = actor.word_matrix.cpu()
+            benchmark_model(actor, answers)
+            actor.cuda()
+            actor.word_matrix = actor.word_matrix.cuda()
 
 
 
@@ -85,10 +98,11 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True):
         benchmark_model(actor, answers)
 
     rewards_list = np.array(rewards_list)
-    avg_rewards = np.convolve(rewards_list, np.ones(100)/100)[100:-100]
+    avg_rewards = np.array(np.convolve(rewards_list, np.ones(100)/100)[100:-100], dtype=np.float16)
     first_turn_rewards = np.array(first_turn_rewards)
-    avg_first_rewards = np.convolve(first_turn_rewards, np.ones(100)/100)[100:-100]
-
+    avg_first_rewards = np.array(np.convolve(first_turn_rewards, np.ones(100)/100)[100:-100], dtype = np.float16)
+    np.save('avg_rewards', avg_rewards)
+    np.save('avg_first_rewards', avg_first_rewards)
 
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4)
     ax1.set_title('Actor Loss')
