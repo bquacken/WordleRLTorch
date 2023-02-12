@@ -10,6 +10,7 @@ if __name__ == '__main__':
     parser.add_argument('--resume', type=bool)
     parser.add_argument('--save', type=bool)
     parser.add_argument('--plot', type=bool)
+    parser.add_argument('--test', type=bool)
     args = parser.parse_args()
 
     if args.resume is None:
@@ -20,4 +21,8 @@ if __name__ == '__main__':
         save = False
     else:
         save = True
+    if args.test is None:
+        test = False
+    else:
+        test = True
     losses = train_embedding(epochs=args.epochs, resume=resume, save=args.save, plot=args.plot)
