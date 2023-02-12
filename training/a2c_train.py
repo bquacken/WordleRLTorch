@@ -34,6 +34,10 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True):
         print('Loading weights...')
         actor.load_state_dict(torch.load(f'models/model_weights/actor_{mode}', map_location=device))
         critic.load_state_dict(torch.load(f'models/model_weights/critic_{mode}', map_location=device))
+        for param in actor.encoder.parameters():
+            param.requires_grad = True
+        for param in critic.encoder.parameters():
+            param.requires_grad = True
 
     total_words = get_words()
 
@@ -61,15 +65,25 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True):
         critic_loss_list.append(critic_loss)
         rewards_list += rewards
         first_turn_rewards += first_rewards
-        if ep % 4000 == 0:
-            if (np.mean(rewards_list[-200000:]) < np.mean(rewards_list[-400000:-200000]) + 0.1):
+        if ep % 2000 == 0:
+            """
+            if (np.mean(rewards_list[-200000:]) < np.mean(rewards_list[-400000:-200000]) + 0.001):
                 print('Adjusting Learning Rate...')
+                printlr = True
                 for g in actor.optim.param_groups:
                     g['lr'] *= params['gamma']
+                    if printlr:
+                        print('Actor Learning Rate: ', g['lr'])
+                        printlr = False
+                printlr = True
                 for g in critic.optim.param_groups:
                     g['lr'] *= params['gamma']
-            torch.save(actor.state_dict(), f'models/model_weights/actor_temp_{int(ep // 4000)}')
-            torch.save(critic.state_dict(), f'models/model_weights/critic_temp_{int(ep // 4000)}')
+                    if printlr:
+                        print('Critic Learning Rate: ', g['lr'])
+                        printlr = False
+            """
+            torch.save(actor.state_dict(), f'models/model_weights/actor_temp_{int((ep // 2000) % 6)}')
+            torch.save(critic.state_dict(), f'models/model_weights/critic_temp_{int((ep // 2000) % 6)}')
             print(f'benchmark {ep // 4000}')
             actor.cpu()
             actor.word_matrix = actor.word_matrix.cpu()
