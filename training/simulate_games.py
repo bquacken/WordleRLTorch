@@ -3,16 +3,17 @@ import numpy as np
 from models.a2c import Actor, Critic
 from training.Memory import Memory
 from wordle.Environment import Environment
-from joblib import Parallel, delayed
+from joblib import Parallel, delayed, parallel_backend
+
 
 device = torch.device('cpu')
+
 
 class ParallelEnvironments:
     def __init__(self, num_workers: int, mode: str = 'hard'):
         self.num_workers = num_workers
         self.actors = [Actor(mode, dev='cpu') for _ in range(self.num_workers)]
         self.critics = [Critic(mode, dev='cpu') for _ in range(self.num_workers)]
-
 
     def load_weights(self, actor_weights, critic_weights):
         # actor_weights.to(torch.device('cpu'))
@@ -54,14 +55,17 @@ class ParallelEnvironments:
                 losing_word_list.append(env.wordle.answer)
         return [memory, rewards_list, first_turn_rewards]
 
+    def single_simulate(self, num_games, answers):
+        [memory, rewards_list, first_turn_rewards] = self.simulate(num_games, self.actors[0], self.critics[0], answers)
+        return memory, rewards_list, first_turn_rewards
+
     def parallel_simulate(self, num_games, answers):
         games_per_worker = int(num_games / self.num_workers)
-        # input_args = [[games_per_worker, self.actors[i], self.critics[i], answers] for i in range(self.num_workers)]
-        # pool = Pool(processes=self.num_workers)
-        # memory_list = pool.starmap(self.simulate, iterable=iter(input_args))
-        result_list = Parallel(n_jobs=self.num_workers, verbose=0) \
-            (delayed(self.simulate)(games_per_worker, self.actors[i], self.critics[i], answers) for i in
-             range(self.num_workers))
+
+        with parallel_backend('loky', inner_max_num_threads=3):
+            result_list = Parallel(n_jobs=self.num_workers, verbose=0) \
+                (delayed(self.simulate)(games_per_worker, self.actors[i], self.critics[i], answers) for i in
+                 range(self.num_workers))
         memory_list = []
         reward_list = []
         first_turn_rewards = []
@@ -77,3 +81,5 @@ class ParallelEnvironments:
             main_memory.dones += mem.dones
             main_memory.rewards += mem.rewards
         return main_memory, reward_list, first_turn_rewards
+
+

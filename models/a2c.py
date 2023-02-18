@@ -31,7 +31,7 @@ class Actor(nn.Module):
     mode (str): 'easy' or 'hard'
     """
 
-    def __init__(self, mode: str = 'hard', dev: str = 'cpu'):
+    def __init__(self, mode: str = 'hard', dev: str = 'cpu', fine_tune: str = False):
         super().__init__()
         self.mode = mode
         self.device = torch.device(dev)
@@ -43,7 +43,7 @@ class Actor(nn.Module):
             param.requires_grad = False
 
         self.n_outputs = 130
-        self.n_neurons = 128
+        self.n_neurons = 256
         self.relu = nn.ReLU()
         self.policy1 = nn.Linear(self.embed_dim, self.n_neurons)
         self.policy2 = nn.Linear(self.n_neurons, self.n_neurons)
@@ -53,11 +53,16 @@ class Actor(nn.Module):
         else:
             raise Exception('Invalid Game Mode')
         self.optim = torch.optim.Adam(self.parameters(), lr=params['actor_lr'])
-        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optim, mode='max', factor=params['gamma'], patience=500, min_lr=1e-9, verbose = True)
+        self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optim, mode='max', factor=params['gamma'],
+                                                                    patience=4000, min_lr=1e-9, verbose=True)
 
         self.encoder.to(self.device)
         for param in self.parameters():
             param.to(self.device)
+
+        if not fine_tune:
+            for param in self.encoder.parameters():
+                param.requires_grad = False
 
     def forward(self, inputs: torch.Tensor):
         x = self.encoder(inputs)
@@ -99,7 +104,7 @@ class Critic(nn.Module):
     mode (str): 'easy' or 'hard'
     """
 
-    def __init__(self, mode: str = 'hard', dev: str = 'cpu'):
+    def __init__(self, mode: str = 'hard', dev: str = 'cpu', fine_tune: bool = False):
         super().__init__()
         self.mode = mode
         self.device = torch.device(dev)
@@ -111,7 +116,7 @@ class Critic(nn.Module):
             param.requires_grad = False
 
         self.n_outputs = 130
-        self.n_neurons = 128
+        self.n_neurons = 256
         self.relu = nn.ReLU()
         self.value1 = nn.Linear(self.embed_dim, self.n_neurons)
         self.value2 = nn.Linear(self.n_neurons, self.n_neurons)
@@ -119,12 +124,15 @@ class Critic(nn.Module):
 
         self.optim = torch.optim.Adam(self.parameters(), lr=params['critic_lr'])
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optim, mode='max', factor=params['gamma'],
-                                                                    patience=500, min_lr=1e-8, verbose=True)
-
+                                                                    patience=2000, min_lr=1e-8, verbose=True)
+        if not fine_tune:
+            for param in self.encoder.parameters():
+                param.requires_grad = False
 
         self.encoder.to(self.device)
         for param in self.parameters():
             param.to(self.device)
+
 
     def forward(self, inputs: torch.Tensor):
         x = self.encoder(inputs)
