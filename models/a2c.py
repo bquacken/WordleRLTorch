@@ -34,6 +34,7 @@ class Actor(nn.Module):
     def __init__(self, mode: str = 'hard', dev: str = 'cpu', fine_tune: str = False):
         super().__init__()
         self.mode = mode
+        self.clip = False
         self.device = torch.device(dev)
         self.state_dim = params['state_dim']
         self.embed_dim = params['embed_dim']
@@ -93,7 +94,8 @@ class Actor(nn.Module):
         logits = self.forward(states)
         actor_loss = actor_loss_fn(acts_advs, logits)
         actor_loss.backward()
-        nn.utils.clip_grad_norm_(self.parameters(), 1)
+        if self.clip:
+            nn.utils.clip_grad_value_(self.parameters(), 1)
         self.optim.step()
         self.scheduler.step(torch.mean(returns))
         return actor_loss.detach().cpu().numpy()
@@ -108,6 +110,7 @@ class Critic(nn.Module):
     def __init__(self, mode: str = 'hard', dev: str = 'cpu', fine_tune: bool = False):
         super().__init__()
         self.mode = mode
+        self.clip = False
         self.device = torch.device(dev)
         self.state_dim = params['state_dim']
         self.embed_dim = params['embed_dim']
@@ -159,50 +162,8 @@ class Critic(nn.Module):
         values = self.forward(states)
         critic_loss = critic_loss_fn(returns, values)
         critic_loss.backward()
-        nn.utils.clip_grad_norm_(self.parameters(), 1)
+        if self.clip:
+            nn.utils.clip_grad_value_(self.parameters(), 1)
         self.optim.step()
         self.scheduler.step(torch.mean(returns))
         return critic_loss.detach().cpu().numpy()
-
-
-"""class A2C(nn.Module):
-    """
-# Advantage Actor Critic Model for Wordle:
-# mode (str): 'easy' or 'hard'
-"""
-
-def __init__(self, mode: str = 'hard'):
-    super().__init__()
-    self.mode = mode
-    self.state_dim = params['state_dim']
-    self.embed_dim = params['embed_dim']
-    self.encoder = nn.Sequential(nn.Linear(self.state_dim, 128), nn.ReLU(), nn.Linear(128, self.embed_dim))
-    self.encoder.load_state_dict(torch.load('models/model_weights/encoder_weights', map_location=device))
-    for param in self.encoder.parameters():
-        param.requires_grad = False
-
-    self.n_outputs = 130
-    self.n_neurons = 64
-    self.relu = nn.ReLU()
-    self.policy1 = nn.Linear(self.embed_dim, self.n_neurons)
-    self.policy2 = nn.Linear(self.n_neurons, self.n_outputs)
-    self.value1 = nn.Linear(self.embed_dim, self.n_neurons)
-    self.value2 = nn.Linear(self.n_neurons, 1)
-    if self.mode in ['easy', 'hard']:
-        self.word_matrix = torch.Tensor(one_hot_words(self.mode))
-    else:
-        raise Exception('Invalid Game Mode')
-
-def forward(self, inputs: torch.Tensor):
-    x = self.encoder(inputs)
-    actor = self.relu(self.policy1(x))
-    actor = self.relu(self.policy2(actor))
-    actor = self.word_matrix @ torch.t(actor)
-    value = self.relu(self.value1(x))
-    value = self.value2(value)
-    return value, torch.t(actor)
-
-def action_value(self, state: torch.Tensor):
-    value, logits = self.forward(state)
-    action = torch.distributions.Categorical(logits=logits).sample([1])
-    return value, action"""

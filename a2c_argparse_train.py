@@ -10,8 +10,9 @@ if __name__ == '__main__':
     parser.add_argument('--save', type=bool, default=False)
     parser.add_argument('--bench', type=bool, default=False)
     parser.add_argument('--finetune', type=bool, default=False)
+    parser.add_argument('--clip', type=bool, default=False)
     args = parser.parse_args()
 
 
-    train_model(epochs=args.epochs, mode=args.mode, resume=args.resume, save=args.save, bench=args.bench, fine_tune=args.finetune)
+    train_model(epochs=args.epochs, mode=args.mode, resume=args.resume, save=args.save, bench=args.bench, fine_tune=args.finetune, clip=args.clip)
 
