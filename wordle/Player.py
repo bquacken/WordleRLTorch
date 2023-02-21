@@ -52,10 +52,6 @@ class Player:
         self.update()
 
     def update(self):
-        """
-        Whether to only consider words that agree with all previous hints.
-        As of now, I have not done anything for a non-greedy strategy.
-        """
         hint = self.hints[-1]
         guess = self.guesses[-1]
         arr = []
