@@ -43,7 +43,7 @@ class Actor(nn.Module):
             param.requires_grad = False
 
         self.n_outputs = 130
-        self.n_neurons = 256
+        self.n_neurons = 512
         self.relu = nn.ReLU()
         self.policy1 = nn.Linear(self.embed_dim, self.n_neurons)
         self.policy2 = nn.Linear(self.n_neurons, self.n_neurons)
@@ -54,7 +54,7 @@ class Actor(nn.Module):
             raise Exception('Invalid Game Mode')
         self.optim = torch.optim.Adam(self.parameters(), lr=params['actor_lr'])
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optim, mode='max', factor=params['gamma'],
-                                                                    patience=4000, min_lr=1e-9, verbose=True)
+                                                                    patience=1500, min_lr=1e-9, verbose=True)
 
         self.encoder.to(self.device)
         for param in self.parameters():
@@ -93,6 +93,7 @@ class Actor(nn.Module):
         logits = self.forward(states)
         actor_loss = actor_loss_fn(acts_advs, logits)
         actor_loss.backward()
+        nn.utils.clip_grad_norm_(self.parameters(), 1)
         self.optim.step()
         self.scheduler.step(torch.mean(returns))
         return actor_loss.detach().cpu().numpy()
@@ -116,7 +117,7 @@ class Critic(nn.Module):
             param.requires_grad = False
 
         self.n_outputs = 130
-        self.n_neurons = 256
+        self.n_neurons = 512
         self.relu = nn.ReLU()
         self.value1 = nn.Linear(self.embed_dim, self.n_neurons)
         self.value2 = nn.Linear(self.n_neurons, self.n_neurons)
@@ -124,7 +125,7 @@ class Critic(nn.Module):
 
         self.optim = torch.optim.Adam(self.parameters(), lr=params['critic_lr'])
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optim, mode='max', factor=params['gamma'],
-                                                                    patience=2000, min_lr=1e-8, verbose=True)
+                                                                    patience=1500, min_lr=1e-8, verbose=True)
         if not fine_tune:
             for param in self.encoder.parameters():
                 param.requires_grad = False
@@ -158,6 +159,7 @@ class Critic(nn.Module):
         values = self.forward(states)
         critic_loss = critic_loss_fn(returns, values)
         critic_loss.backward()
+        nn.utils.clip_grad_norm_(self.parameters(), 1)
         self.optim.step()
         self.scheduler.step(torch.mean(returns))
         return critic_loss.detach().cpu().numpy()
