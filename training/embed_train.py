@@ -34,6 +34,8 @@ def train_embedding(epochs: int = 10,
         model.load_state_dict(torch.load('models/model_weights/autoencoder_weights'))
     train_ds = StateDataset('train')
     adam = torch.optim.Adam(model.parameters())
+    scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(adam, mode='min', factor=0.1,
+                                                           patience=3, min_lr=1e-9, verbose=True)
     train_dl = DataLoader(train_ds, batch_size=None, shuffle=True, num_workers=workers,
                           generator=torch.Generator(device='cuda'))
     loss_fn = EmbeddingLoss()
@@ -41,6 +43,7 @@ def train_embedding(epochs: int = 10,
     accuracy_fn = MultilabelAccuracy(448, threshold=0.5, average='none').to(device)
     for ep in range(epochs):
         accuracy = []
+        epoch_losses = []
         print(f'Training Epoch {ep}:')
         for file in tqdm(train_dl):
             model.zero_grad()
@@ -49,8 +52,10 @@ def train_embedding(epochs: int = 10,
             loss.backward()
             adam.step()
             losses.append(loss.detach().cpu().numpy())
+            epoch_losses.append(losses[-1])
             accuracy.append(accuracy_fn(encoded_state, file).detach().cpu().mean())
         print('Accuracy: ', torch.mean(torch.Tensor(accuracy)))
+        scheduler.step(torch.mean(torch.Tensor(np.array(losses[-400:]))))
     if save:
         print('Saving Weights')
         torch.save(model.encoder.state_dict(), 'models/model_weights/encoder_weights')

@@ -7,22 +7,11 @@ if __name__ == '__main__':
     torch.multiprocessing.set_start_method('spawn')
     parser = ArgumentParser()
     parser.add_argument('--epochs', type=int, required=True)
-    parser.add_argument('--resume', type=bool)
-    parser.add_argument('--save', type=bool)
-    parser.add_argument('--plot', type=bool)
-    parser.add_argument('--test', type=bool)
+    parser.add_argument('--resume', type=bool, default=False)
+    parser.add_argument('--save', type=bool, default=True)
+    parser.add_argument('--plot', type=bool, default=True)
+    parser.add_argument('--test', type=bool, default=True)
     args = parser.parse_args()
 
-    if args.resume is None:
-        resume = False
-    else:
-        resume = True
-    if args.save is None:
-        save = False
-    else:
-        save = True
-    if args.test is None:
-        test = False
-    else:
-        test = True
-    losses = train_embedding(epochs=args.epochs, resume=resume, save=args.save, plot=args.plot)
+
+    losses = train_embedding(epochs=args.epochs, resume=args.resume, save=args.save, plot=args.plot, test=args.test)

@@ -38,8 +38,6 @@ class EmbeddingLoss(_Loss):
         output_loss += self.cos_loss(inputs[:, 6:32], targets[:, 6:32], torch.ones(batch))
         output_loss += self.cos_loss(inputs[:, 32:58], targets[:, 32:58], torch.ones(batch))
         for j in range(5):
-            # for k in range(26):
-            # output_loss += self.cos_loss(inputs[:, 58 + 26 * 3 * j + 3 * k: 58 + 26 * 3 * j + 3 * k + 3], targets[:, 58 + 26 * 3 * j + 3 * k: 58 + 26 * 3 * j + 3 * k + 3], torch.ones(batch))
             output_loss += self.cos_loss(inputs[:, 58 + 26 * 3 * j : 58 + 26 * 3 * (j+1)],
                                          targets[:, 58 + 26 * 3 * j : 58 + 26 * 3 * (j+1)],
                                          torch.ones(batch))
