@@ -15,7 +15,7 @@ eps = np.finfo(np.float32).eps.item()
 
 
 def critic_loss_fn(returns: torch.Tensor, values: torch.Tensor) -> torch.Tensor:
-    return nn.HuberLoss(reduction='mean')(returns, values)
+    return nn.MSELoss(reduction='mean')(returns, values)
 
 
 def actor_loss_fn(actions_advantages: torch.Tensor, policy_logits: torch.Tensor) -> torch.Tensor:
