@@ -21,7 +21,7 @@ def get_index(word):
 
 def generate_game_data():
     print('Generating game data...')
-    num_picks = 100
+    num_picks = 200
     df = pd.read_csv('dataloader/data/wordle_random.csv')
     game_repeats = df['solution'].value_counts()[0]
     total = len(df)
@@ -120,7 +120,7 @@ def batch_state_data():
 
     print('Batching state data...')
 
-    batch_size = 1024
+    batch_size = 2048
     train = 0.6
     test = 0.4
 
