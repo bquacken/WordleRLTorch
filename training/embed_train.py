@@ -33,11 +33,10 @@ def train_embedding(epochs: int = 10,
         print('Loading weights...')
         model.load_state_dict(torch.load('models/model_weights/autoencoder_weights'))
     train_ds = StateDataset('train')
-    adam = torch.optim.Adam(model.parameters())
+    adam = torch.optim.Adam(model.parameters(), lr=1e-3)
     scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(adam, mode='min', factor=0.1,
                                                            patience=3, min_lr=1e-9, verbose=True)
-    train_dl = DataLoader(train_ds, batch_size=None, shuffle=True, num_workers=workers,
-                          generator=torch.Generator(device='cuda'))
+    train_dl = DataLoader(train_ds, batch_size=None)
     loss_fn = EmbeddingLoss()
     losses = []
     accuracy_fn = MultilabelAccuracy(448, threshold=0.5, average='none').to(device)
