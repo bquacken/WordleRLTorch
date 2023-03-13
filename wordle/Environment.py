@@ -83,19 +83,17 @@ class Environment:
         reward = 0
         if self.num_guesses == 1:
             info = 0.5* self.bits_info[action][0] / np.max(self.bits_info)
-            if info > 2:
-                reward += info
+            reward += 0*info # Add this in later
         if self.wordle.win:
             # Reward more for faster wins
             if self.num_guesses == 3:
                 reward += self.reward_win
             elif self.num_guesses == 4:
-                reward += 0.8 *  self.reward_win
+                reward += 0.8 * self.reward_win
             elif self.num_guesses == 5:
                 reward += 0.4*self.reward_win
             else:
                 reward += 0.2*self.reward_win
-            reward += self.reward_win
         elif not self.wordle.win and self.wordle.over:
             reward += self.reward_lose
         self.rewards.append(reward)
