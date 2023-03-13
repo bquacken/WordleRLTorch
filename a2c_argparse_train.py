@@ -8,7 +8,7 @@ if __name__ == '__main__':
     parser.add_argument('--mode', type=str, default='easy')
     parser.add_argument('--resume', type=bool, default=False)
     parser.add_argument('--save', type=bool, default=False)
-    parser.add_argument('--bench', type=bool, default=False)
+    parser.add_argument('--bench', type=bool, default=True)
     parser.add_argument('--finetune', type=bool, default=False)
     parser.add_argument('--clip', type=bool, default=False)
     args = parser.parse_args()

@@ -38,14 +38,15 @@ class Actor(nn.Module):
         self.device = torch.device(dev)
         self.state_dim = params['state_dim']
         self.embed_dim = params['embed_dim']
-        self.encoder = nn.Sequential(nn.Linear(self.state_dim, 256), nn.ReLU(), nn.Linear(256, self.embed_dim))
+        self.activ = nn.Tanh()
+        self.encoder = nn.Sequential(nn.Linear(self.state_dim, 256), self.activ, nn.Linear(256, self.embed_dim))
         self.encoder.load_state_dict(torch.load('models/model_weights/encoder_weights', map_location=self.device))
         for param in self.encoder.parameters():
             param.requires_grad = False
 
         self.n_outputs = 130
         self.n_neurons = 512
-        self.relu = nn.ReLU()
+
         self.policy1 = nn.Linear(self.embed_dim, self.n_neurons)
         self.policy2 = nn.Linear(self.n_neurons, self.n_neurons)
         self.policy3 = nn.Linear(self.n_neurons, self.n_outputs)
@@ -55,7 +56,7 @@ class Actor(nn.Module):
             raise Exception('Invalid Game Mode')
         self.optim = torch.optim.Adam(self.parameters(), lr=params['actor_lr'])
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optim, mode='max', factor=params['gamma'],
-                                                                    patience=1500, min_lr=1e-9, verbose=True)
+                                                                    patience=2000, min_lr=1e-9, verbose=True)
 
         self.encoder.to(self.device)
         for param in self.parameters():
@@ -67,9 +68,9 @@ class Actor(nn.Module):
 
     def forward(self, inputs: torch.Tensor):
         x = self.encoder(inputs)
-        x = self.relu(self.policy1(x))
-        x = self.relu(self.policy2(x))
-        x = self.relu(self.policy3(x))
+        x = self.activ(self.policy1(x))
+        x = self.activ(self.policy2(x))
+        x = self.activ(self.policy3(x))
         x = self.word_matrix @ torch.t(x)
         return torch.t(x)
 
@@ -95,7 +96,7 @@ class Actor(nn.Module):
         actor_loss = actor_loss_fn(acts_advs, logits)
         actor_loss.backward()
         if self.clip:
-            nn.utils.clip_grad_value_(self.parameters(), 1)
+            nn.utils.clip_grad_norm_(self.parameters(), 10)
         self.optim.step()
         self.scheduler.step(torch.mean(returns))
         return actor_loss.detach().cpu().numpy()
@@ -114,21 +115,22 @@ class Critic(nn.Module):
         self.device = torch.device(dev)
         self.state_dim = params['state_dim']
         self.embed_dim = params['embed_dim']
-        self.encoder = nn.Sequential(nn.Linear(self.state_dim, 256), nn.ReLU(), nn.Linear(256, self.embed_dim))
+        self.activ = nn.Tanh()
+        self.encoder = nn.Sequential(nn.Linear(self.state_dim, 256), self.activ, nn.Linear(256, self.embed_dim))
         self.encoder.load_state_dict(torch.load('models/model_weights/encoder_weights', map_location=self.device))
         for param in self.encoder.parameters():
             param.requires_grad = False
 
         self.n_outputs = 130
         self.n_neurons = 512
-        self.relu = nn.ReLU()
+
         self.value1 = nn.Linear(self.embed_dim, self.n_neurons)
         self.value2 = nn.Linear(self.n_neurons, self.n_neurons)
         self.value3 = nn.Linear(self.n_neurons, 1)
 
         self.optim = torch.optim.Adam(self.parameters(), lr=params['critic_lr'])
         self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optim, mode='max', factor=params['gamma'],
-                                                                    patience=1500, min_lr=1e-8, verbose=True)
+                                                                    patience=2000, min_lr=1e-8, verbose=True)
         if not fine_tune:
             for param in self.encoder.parameters():
                 param.requires_grad = False
@@ -140,8 +142,8 @@ class Critic(nn.Module):
 
     def forward(self, inputs: torch.Tensor):
         x = self.encoder(inputs)
-        x = self.relu(self.value1(x))
-        x = self.relu(self.value2(x))
+        x = self.activ(self.value1(x))
+        x = self.activ(self.value2(x))
         value = self.value3(x)
         return value
 
@@ -163,7 +165,7 @@ class Critic(nn.Module):
         critic_loss = critic_loss_fn(returns, values)
         critic_loss.backward()
         if self.clip:
-            nn.utils.clip_grad_value_(self.parameters(), 1)
+            nn.utils.clip_grad_norm_(self.parameters(), 10)
         self.optim.step()
         self.scheduler.step(torch.mean(returns))
         return critic_loss.detach().cpu().numpy()

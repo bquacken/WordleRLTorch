@@ -21,7 +21,7 @@ cpu = torch.device('cpu')
 device = torch.device('cpu')
 
 
-def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_tune=False, clip = False):
+def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_tune=False, clip=False):
     actor = Actor(mode, dev, fine_tune=fine_tune)
     critic = Critic(mode, dev, fine_tune=fine_tune)
     actor.clip = clip
@@ -46,7 +46,6 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_
         for param in critic.encoder.parameters():
             param.requires_grad = True
 
-
     total_words = get_words()
 
     if mode == 'easy':
@@ -61,7 +60,6 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_
     actor_loss_list = []
     critic_loss_list = []
 
-
     faulthandler.enable()
     for ep in tqdm(range(1, epochs + 1)):
         para_env.load_weights(actor.state_dict(), critic.state_dict())
@@ -74,10 +72,6 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_
         critic_loss_list.append(critic_loss)
         rewards_list += rewards
         first_turn_rewards += first_rewards
-
-        if ep > 6000:
-            actor.clip = True
-            critic.clip = True
 
         if ep % 2000 == 0:
             torch.save(actor.state_dict(), f'models/model_weights/actor_temp_{int((ep // 2000) % 6)}')
@@ -141,4 +135,3 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_
         torch.save(critic.optim.state_dict(), f'models/model_weights/critic_optim_{mode}')
 
     return actor_loss_list, critic_loss_list
-
