@@ -13,12 +13,13 @@ class StateAutoencoder(nn.Module):
         super(StateAutoencoder, self).__init__()
         self.state_dim = params['state_dim']
         self.embed_dim = params['embed_dim']
+        self.activ = nn.Tanh()
         self.encode1 = nn.Linear(self.state_dim, 256)
         self.encode2 = nn.Linear(256, self.embed_dim)
         self.decode1 = nn.Linear(self.embed_dim, 256)
         self.decode2 = nn.Linear(256, self.state_dim)
-        self.encoder = nn.Sequential(self.encode1, nn.ReLU(), self.encode2)
-        self.decoder = nn.Sequential(self.decode1, nn.ReLU(), self.decode2, nn.Sigmoid())
+        self.encoder = nn.Sequential(self.encode1, self.activ, self.encode2)
+        self.decoder = nn.Sequential(self.decode1, self.activ, self.decode2, nn.Sigmoid())
 
     def forward(self, inputs):
         return self.decoder(self.encoder(inputs))
