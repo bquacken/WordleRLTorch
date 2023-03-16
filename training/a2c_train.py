@@ -2,6 +2,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from tqdm import tqdm
+from datetime import datetime
 
 from config import params
 from models.a2c import Actor, Critic
@@ -108,6 +109,8 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_
     np.save('avg_rewards', avg_rewards)
     np.save('avg_first_rewards', avg_first_rewards)
 
+    now = datetime.now()
+    now = now.strftime("%m&d&Y_&H:%M")
     fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4)
     ax1.set_title('Actor Loss')
     ax1.plot(actor_loss_list)
@@ -117,6 +120,7 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_
     ax3.plot(avg_rewards)
     ax4.set_title('Average Rewards from first turn')
     ax4.plot(avg_first_rewards)
+    fig.savefig(f'training/plots/rewards_losses_{now}.jpeg')
     plt.show()
 
     if not save:
