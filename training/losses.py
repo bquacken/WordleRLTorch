@@ -7,7 +7,7 @@ if torch.cuda.is_available():
 else:
     device = torch.device('cpu')
 
-critic_loss_weight = 0.6
+critic_loss_weight = 0.7
 entropy_loss_weight = 0.01
 
 
