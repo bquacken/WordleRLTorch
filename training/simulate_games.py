@@ -1,30 +1,28 @@
 import torch
 import numpy as np
-from models.a2c import Actor, Critic
+from models.a2c import ActorCritic
+from models.transformer import ActorCriticTransformer
 from training.Memory import Memory
 from wordle.Environment import Environment
 from joblib import Parallel, delayed, parallel_backend
-
 
 device = torch.device('cpu')
 
 
 class ParallelEnvironments:
-    def __init__(self, num_workers: int, mode: str = 'hard'):
+    def __init__(self, num_workers: int, model_str: str, mode: str = 'hard'):
         self.num_workers = num_workers
-        self.actors = [Actor(mode, dev='cpu') for _ in range(self.num_workers)]
-        self.critics = [Critic(mode, dev='cpu') for _ in range(self.num_workers)]
+        if model_str == 'mlp':
+            self.models = [ActorCritic(mode, dev='cpu') for _ in range(self.num_workers)]
+        elif model_str == 'transformer':
+            self.models = [ActorCriticTransformer(mode, dev='cpu') for _ in range(self.num_workers)]
 
-    def load_weights(self, actor_weights, critic_weights):
-        # actor_weights.to(torch.device('cpu'))
-        # critic_weights.to(torch.device('cpu'))
+    def load_weights(self, model_weights):
         for i in range(self.num_workers):
-            self.actors[i].load_state_dict(actor_weights)
-            self.critics[i].load_state_dict(critic_weights)
-            self.actors[i].cpu()
-            self.critics[i].cpu()
+            self.models[i].load_state_dict(model_weights)
+            self.models[i].cpu()
 
-    def simulate(self, num_games, actor, critic, answers):
+    def simulate(self, num_games, model, answers):
         np.random.seed()
         memory = Memory()
         memory.clear()
@@ -42,8 +40,7 @@ class ParallelEnvironments:
             while not env.wordle.over:
                 with torch.no_grad():
                     state = torch.Tensor(env.state)
-                    action = actor.action(state[None, :])
-                    value = critic(state[None, :])
+                    action, value = model.action_value(state[None, :])
                     action = int(action[0][0])
                     next_state, reward, done = env.step(action)
                     memory.add(state, action, value.cpu().numpy()[0][0], done, reward)
@@ -56,7 +53,7 @@ class ParallelEnvironments:
         return [memory, rewards_list, first_turn_rewards]
 
     def single_simulate(self, num_games, answers):
-        [memory, rewards_list, first_turn_rewards] = self.simulate(num_games, self.actors[0], self.critics[0], answers)
+        [memory, rewards_list, first_turn_rewards] = self.simulate(num_games, self.models[0], answers)
         return memory, rewards_list, first_turn_rewards
 
     def parallel_simulate(self, num_games, answers):
@@ -64,7 +61,7 @@ class ParallelEnvironments:
 
         with parallel_backend('loky', inner_max_num_threads=3):
             result_list = Parallel(n_jobs=self.num_workers, verbose=0) \
-                (delayed(self.simulate)(games_per_worker, self.actors[i], self.critics[i], answers) for i in
+                (delayed(self.simulate)(games_per_worker, self.models[i], answers) for i in
                  range(self.num_workers))
         memory_list = []
         reward_list = []
@@ -81,5 +78,3 @@ class ParallelEnvironments:
             main_memory.dones += mem.dones
             main_memory.rewards += mem.rewards
         return main_memory, reward_list, first_turn_rewards
-
-

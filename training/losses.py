@@ -8,7 +8,7 @@ else:
     device = torch.device('cpu')
 
 critic_loss_weight = 0.7
-entropy_loss_weight = 0.01
+entropy_loss_weight = 0.001
 
 
 def critic_loss_fn(returns: torch.Tensor, values: torch.Tensor) -> torch.Tensor:

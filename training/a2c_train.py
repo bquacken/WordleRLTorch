@@ -5,7 +5,8 @@ from tqdm import tqdm
 from datetime import datetime
 
 from config import params
-from models.a2c import Actor, Critic
+from models.a2c import ActorCritic
+from models.transformer import ActorCriticTransformer
 from wordle.Environment import Environment
 from training.simulate_games import ParallelEnvironments
 from training.benchmark import benchmark_model
@@ -19,33 +20,40 @@ else:
     device = torch.device('cpu')
     dev = 'cpu'
 cpu = torch.device('cpu')
-device = torch.device('cpu')
 
 
-def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_tune=False, clip=False):
-    actor = Actor(mode, dev, fine_tune=fine_tune)
-    critic = Critic(mode, dev, fine_tune=fine_tune)
-    actor.clip = clip
-    critic.clip = clip
-
-    if dev == 'cuda':
-        actor.cuda()
-        critic.cuda()
+def train_model(epochs,
+                mode='easy',
+                model_str='mlp',
+                resume=False,
+                save=False,
+                bench=True):
+    """
+    Parameters
+    ----------
+    :param epochs: int
+    :   Number of epochs to train for
+    :param mode: str
+    :   'easy' or 'hard'
+    :param model_str:
+    :   'mlp' or 'transformer'
+    :param resume:
+    :   Whether to resume training from a previous checkpoint
+    :param save:
+    :   Whether to save the model weights after training
+    :param bench:
+    :   Whether to benchmark the model after training
+    :return: None
+    """
+    if model_str == 'mlp':
+        model = ActorCritic(mode, dev)
+    elif model_str == 'transformer':
+        model = ActorCriticTransformer(mode, dev)
 
     batch_size = params['batch_size']
     if resume:
         print('Loading weights...')
-        actor.load_state_dict(torch.load(f'models/model_weights/actor_{mode}', map_location=device))
-        actor.optim.load_state_dict(torch.load(f'models/model_weights/actor_optim_{mode}', map_location=device))
-        critic.load_state_dict(torch.load(f'models/model_weights/critic_{mode}', map_location=device))
-        critic.optim.load_state_dict(torch.load(f'models/model_weights/critic_optim_{mode}', map_location=device))
-
-    if fine_tune:
-        print('Finetuning...')
-        for param in actor.encoder.parameters():
-            param.requires_grad = True
-        for param in critic.encoder.parameters():
-            param.requires_grad = True
+        model.load_state_dict(torch.load(f'models/model_weights/{model}_weights', map_location=device))
 
     total_words = get_words()
 
@@ -54,7 +62,7 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_
     else:
         answers = total_words[:2309]
 
-    para_env = ParallelEnvironments(params['parallel_workers'], mode)
+    para_env = ParallelEnvironments(params['parallel_workers'], model_str, mode)
 
     rewards_list = []
     first_turn_rewards = []
@@ -63,11 +71,10 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_
 
     faulthandler.enable()
     for ep in tqdm(range(1, epochs + 1)):
-        para_env.load_weights(actor.state_dict(), critic.state_dict())
+        para_env.load_weights(model.state_dict())
         memory, rewards, first_rewards = para_env.parallel_simulate(batch_size, answers)
 
-        actor_loss = actor.train_on_batch(memory)
-        critic_loss = critic.train_on_batch(memory)
+        actor_loss, critic_loss = model.train_on_batch(memory)
 
         actor_loss_list.append(actor_loss)
         critic_loss_list.append(critic_loss)
@@ -75,24 +82,23 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_
         first_turn_rewards += first_rewards
 
         if ep % 2000 == 0:
-            torch.save(actor.state_dict(), f'models/model_weights/actor_temp_{int((ep // 2000) % 6)}')
-            torch.save(critic.state_dict(), f'models/model_weights/critic_temp_{int((ep // 2000) % 6)}')
+            torch.save(model.state_dict(), f'models/model_weights/{model_str}_temp_{int((ep // 2000) % 6)}')
             print(f'benchmark {ep // 2000}')
-            actor.cpu()
-            actor.word_matrix = actor.word_matrix.cpu()
-            benchmark_model(actor, answers)
-            actor.cuda()
-            actor.word_matrix = actor.word_matrix.cuda()
+            model.cpu()
+            model.word_matrix = model.word_matrix.cpu()
+            benchmark_model(model, answers)
+            model.cuda()
+            model.word_matrix = model.word_matrix.cuda()
 
     env = Environment()
     env.reset(np.random.choice(answers, 1)[0])
-    actor.cpu()
-    actor.word_matrix = actor.word_matrix.cpu()
-    critic.cpu()
+    model.cpu()
+    model.word_matrix = model.word_matrix.cpu()
+
     while not env.wordle.over:
         with torch.no_grad():
             state = torch.Tensor(env.state)
-            action = actor.action(state[None, :])
+            action, _ = model.action_value(state[None, :])
             action = int(action[0][0])
             env.step(action)
 
@@ -100,7 +106,7 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_
     print('Guesses: ', env.wordle.guesses)
 
     if bench:
-        benchmark_model(actor, answers)
+        benchmark_model(model, answers)
 
     rewards_list = np.array(rewards_list)
     avg_rewards = np.array(np.convolve(rewards_list, np.ones(100) / 100)[100:-100], dtype=np.float16)
@@ -120,22 +126,17 @@ def train_model(epochs, mode='easy', resume=False, save=False, bench=True, fine_
     ax3.plot(avg_rewards)
     ax4.set_title('Average Rewards from first turn')
     ax4.plot(avg_first_rewards)
-    fig.savefig(f'training/plots/rewards_losses_{now}.jpeg')
+    fig.savefig(f'training/plots/{model_str}_rewards_losses_{now}.jpeg')
     plt.show()
 
     if not save:
         save = input('Do you want to save models weights? Y for yes, N for No: ')
         if save.lower() == 'y':
             print('Saving Model Weights...')
-            torch.save(actor.state_dict(), f'models/model_weights/actor_{mode}')
-            torch.save(actor.optim.state_dict(), f'models/model_weights/actor_optim_{mode}')
-            torch.save(critic.state_dict(), f'models/model_weights/critic_{mode}')
-            torch.save(critic.optim.state_dict(), f'models/model_weights/critic_optim_{mode}')
+            torch.save(model.state_dict(), f'models/model_weights/{model_str}_{mode}')
+
     elif save:
         print('Saving Model Weights...')
-        torch.save(actor.state_dict(), f'models/model_weights/actor_{mode}')
-        torch.save(actor.optim.state_dict(), f'models/model_weights/actor_optim_{mode}')
-        torch.save(critic.state_dict(), f'models/model_weights/critic_{mode}')
-        torch.save(critic.optim.state_dict(), f'models/model_weights/critic_optim_{mode}')
+        torch.save(model.state_dict(), f'models/model_weights/{model_str}_{mode}')
 
-    return actor_loss_list, critic_loss_list
+    return
