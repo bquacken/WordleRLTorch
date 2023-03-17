@@ -9,8 +9,6 @@ if torch.cuda.is_available():
 else:
     device = torch.device('cpu')
 
-device = torch.device('cpu')
-
 
 def compute_advantages(rewards: torch.Tensor, values: torch.Tensor, dones: torch.Tensor):
     discount_factor = 0.99
@@ -25,59 +23,50 @@ def compute_advantages(rewards: torch.Tensor, values: torch.Tensor, dones: torch
         return returns, advantages
 
 
-class Actor(nn.Module):
-    """
-    Advantage Actor Critic Model for Wordle:
-    mode (str): 'easy' or 'hard'
-    """
 
-    def __init__(self, mode: str = 'hard', dev: str = 'cpu', fine_tune: str = False):
+class ActorCritic(nn.Module):
+    def __init__(self, mode: str = 'hard', dev: str = 'cpu'):
         super().__init__()
+        assert mode in ['easy', 'hard']
         self.mode = mode
-        self.clip = False
         self.device = torch.device(dev)
-        self.state_dim = params['state_dim']
-        self.embed_dim = params['embed_dim']
-        self.activ = nn.Tanh()
-        self.encoder = nn.Sequential(nn.Linear(self.state_dim, 256), self.activ, nn.Linear(256, self.embed_dim))
-        self.encoder.load_state_dict(torch.load('models/model_weights/encoder_weights', map_location=self.device))
-        for param in self.encoder.parameters():
-            param.requires_grad = False
 
-        self.n_outputs = 130
-        self.n_neurons = 256
+        self.d_input = params['state_dim']
+        self.d_embed = 256
+        self.head = nn.Sequential(nn.Linear(self.d_input, self.d_embed), nn.Tanh(),
+                                  nn.Linear(self.d_embed, self.d_embed), nn.Tanh(),
+                                  nn.Linear(self.d_embed, self.d_embed), nn.Tanh())
 
-        self.policy1 = nn.Linear(self.embed_dim, self.n_neurons)
-        self.policy2 = nn.Linear(self.n_neurons, self.n_neurons)
-        self.policy3 = nn.Linear(self.n_neurons, self.n_outputs)
-        if self.mode in ['easy', 'hard']:
-            self.register_buffer('word_matrix', torch.Tensor(one_hot_words(self.mode)).to(self.device))
-        else:
-            raise Exception('Invalid Game Mode')
-        self.optim = torch.optim.RMSprop(self.parameters(), lr=params['actor_lr'])
-        #self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optim, mode='max', factor=params['gamma'],
-        #                                                            patience=2000, min_lr=1e-9, verbose=True)
+        self.value = nn.Sequential(nn.Linear(self.d_embed, self.d_embed),
+                                   nn.Tanh(),
+                                   nn.Linear(self.d_embed, 1))
 
-        self.encoder.to(self.device)
-        for param in self.parameters():
-            param.to(self.device)
+        self.policy = nn.Sequential(nn.Linear(self.d_embed, self.d_embed),
+                                    nn.Tanh(),
+                                    nn.Linear(self.d_embed, 130))
 
-        if not fine_tune:
-            for param in self.encoder.parameters():
-                param.requires_grad = False
+        self.num_param = sum(p.numel() for p in self.parameters() if p.requires_grad)
+        self.word_matrix = torch.Tensor(one_hot_words(self.mode)).to(self.device)
 
-    def forward(self, inputs: torch.Tensor):
-        x = self.encoder(inputs)
-        x = self.activ(self.policy1(x))
-        x = self.activ(self.policy2(x))
-        x = self.activ(self.policy3(x))
-        x = self.word_matrix @ torch.t(x)
-        return torch.t(x)
+        self.dev = torch.device(dev)
 
-    def action(self, state: torch.Tensor):
-        logits = self.forward(state)
+        if dev == 'cuda':
+            self.head.cuda()
+            self.value.cuda()
+            self.policy.cuda()
+        self.optim = torch.optim.RMSprop(self.parameters(), lr=params['lr'])
+
+    def forward(self, x):
+        x = self.head(x)
+        value = self.value(x)
+        policy = self.policy(x)
+        policy = policy @ self.word_matrix.t()
+        return policy, value
+
+    def action_value(self, state: torch.Tensor):
+        logits, value = self.forward(state)
         action = torch.distributions.Categorical(logits=logits).sample([1])
-        return action
+        return action, value
 
     def train_on_batch(self, memory):
         states = torch.stack(memory.states).to(self.device)
@@ -86,86 +75,17 @@ class Actor(nn.Module):
         dones = torch.tensor(memory.dones, dtype=torch.int8).to(self.device)
         rewards = torch.tensor(memory.rewards, dtype=torch.int8).to(self.device)
 
+
         returns, advantages = compute_advantages(rewards, values, dones)
         acts_advs = torch.zeros((len(actions), 2))
         acts_advs[:, 0] = actions
         acts_advs[:, 1] = advantages
 
         self.optim.zero_grad()
-        logits = self.forward(states)
+        logits, value = self.forward(states)
         actor_loss = actor_loss_fn(acts_advs, logits)
-        actor_loss.backward()
-        if self.clip:
-            nn.utils.clip_grad_norm_(self.parameters(), 10)
-        self.optim.step()
-        #self.scheduler.step(torch.mean(returns))
-        return actor_loss.detach().cpu().numpy()
-
-
-class Critic(nn.Module):
-    """
-    Advantage Actor Critic Model for Wordle:
-    mode (str): 'easy' or 'hard'
-    """
-
-    def __init__(self, mode: str = 'hard', dev: str = 'cpu', fine_tune: bool = False):
-        super().__init__()
-        self.mode = mode
-        self.clip = False
-        self.device = torch.device(dev)
-        self.state_dim = params['state_dim']
-        self.embed_dim = params['embed_dim']
-        self.activ = nn.Tanh()
-        self.encoder = nn.Sequential(nn.Linear(self.state_dim, 256), self.activ, nn.Linear(256, self.embed_dim))
-        self.encoder.load_state_dict(torch.load('models/model_weights/encoder_weights', map_location=self.device))
-        for param in self.encoder.parameters():
-            param.requires_grad = False
-
-        self.n_outputs = 130
-        self.n_neurons = 256
-
-        self.value1 = nn.Linear(self.embed_dim, self.n_neurons)
-        self.value2 = nn.Linear(self.n_neurons, self.n_neurons)
-        self.value3 = nn.Linear(self.n_neurons, 1)
-
-        self.optim = torch.optim.RMSprop(self.parameters(), lr=params['critic_lr'])
-        #self.scheduler = torch.optim.lr_scheduler.ReduceLROnPlateau(self.optim, mode='max', factor=params['gamma'],
-        #                                                            patience=2000, min_lr=1e-8, verbose=True)
-        if not fine_tune:
-            for param in self.encoder.parameters():
-                param.requires_grad = False
-
-        self.encoder.to(self.device)
-        for param in self.parameters():
-            param.to(self.device)
-
-
-    def forward(self, inputs: torch.Tensor):
-        x = self.encoder(inputs)
-        x = self.activ(self.value1(x))
-        x = self.activ(self.value2(x))
-        value = self.value3(x)
-        return value
-
-    def train_on_batch(self, memory):
-        states = torch.stack(memory.states).to(self.device)
-        actions = torch.Tensor(memory.actions).to(self.device)
-        values = torch.Tensor(memory.values).to(self.device)
-        dones = torch.tensor(memory.dones, dtype=torch.int8).to(self.device)
-        rewards = torch.tensor(memory.rewards, dtype=torch.int8).to(self.device)
-
-        returns, advantages = compute_advantages(rewards, values, dones)
-        acts_advs = torch.zeros((len(actions), 2))
-        acts_advs[:, 0] = actions
-        acts_advs[:, 1] = advantages
-        returns = returns.view(len(rewards), 1)
-
-        self.optim.zero_grad()
-        values = self.forward(states)
         critic_loss = critic_loss_fn(returns, values)
-        critic_loss.backward()
-        if self.clip:
-            nn.utils.clip_grad_norm_(self.parameters(), 10)
+        loss = actor_loss + critic_loss
+        loss.backward()
         self.optim.step()
-        #self.scheduler.step(torch.mean(returns))
-        return critic_loss.detach().cpu().numpy()
+        return actor_loss.detach().cpu().numpy(), critic_loss.detach().cpu().numpy()
