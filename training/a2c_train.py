@@ -53,7 +53,7 @@ def train_model(epochs,
     batch_size = params['batch_size']
     if resume:
         print('Loading weights...')
-        model.load_state_dict(torch.load(f'models/model_weights/{model}_weights', map_location=device))
+        model.load_state_dict(torch.load(f'models/model_weights/{model_str}_{mode}', map_location=device))
 
     total_words = get_words()
 
