@@ -9,6 +9,13 @@ from training.losses import actor_loss_fn, critic_loss_fn
 pi = torch.pi
 
 
+def transformer_lr(epoch):
+    if epoch < 6000:
+        return 10
+    else:
+        return 1
+
+
 class Head(nn.Module):
     def __init__(self, d_in, d_embed):
         super().__init__()
@@ -47,8 +54,8 @@ class MultiHead(nn.Module):
 class FeedForward(nn.Module):
     def __init__(self, d_embed):
         super().__init__()
-        self.lin1 = nn.Linear(d_embed, d_embed * 2)
-        self.lin2 = nn.Linear(d_embed * 2, d_embed)
+        self.lin1 = nn.Linear(d_embed, d_embed * 4)
+        self.lin2 = nn.Linear(d_embed * 4, d_embed)
 
     def forward(self, x):
         out = self.lin1(x)
@@ -99,8 +106,8 @@ class ActorCriticTransformer(nn.Module):
             self.value.cuda()
             self.policy.cuda()
 
-        self.optim = torch.optim.RMSprop(self.parameters(), lr=params['lr'])
-
+        self.optim = torch.optim.RMSprop(self.parameters(), lr=params['transformer_lr'])
+        self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optim, transformer_lr)
 
     def forward(self, x):
         x = self.encoder(x)
@@ -134,4 +141,5 @@ class ActorCriticTransformer(nn.Module):
         loss = actor_loss + critic_loss
         loss.backward()
         self.optim.step()
+        self.scheduler.step()
         return actor_loss.detach().cpu().numpy(), critic_loss.detach().cpu().numpy()
