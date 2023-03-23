@@ -10,7 +10,7 @@ pi = torch.pi
 
 
 def transformer_lr(epoch):
-    if epoch < 6000:
+    if epoch < 10000:
         return 10
     else:
         return 1
@@ -122,6 +122,13 @@ class ActorCriticTransformer(nn.Module):
         action = torch.distributions.Categorical(logits=logits).sample([1])
         return action, value
 
+    def character_logits(self, x):
+        x = self.encoder(x)
+        x = self.block(x)
+        x = self.policy(x)
+        return x
+
+
     def train_on_batch(self, memory):
         states = torch.stack(memory.states).to(self.device)
         actions = torch.Tensor(memory.actions).to(self.device)
@@ -136,10 +143,11 @@ class ActorCriticTransformer(nn.Module):
 
         self.optim.zero_grad()
         logits, values = self.forward(states)
-        actor_loss = actor_loss_fn(acts_advs, logits)
+        char_logits = self.character_logits(states)
+        policy_loss, entropy_loss = actor_loss_fn(acts_advs, logits, char_logits)
         critic_loss = critic_loss_fn(returns, values.squeeze())
-        loss = actor_loss + critic_loss
+        loss = policy_loss - entropy_loss + critic_loss
         loss.backward()
         self.optim.step()
         self.scheduler.step()
-        return actor_loss.detach().cpu().numpy(), critic_loss.detach().cpu().numpy()
+        return policy_loss.item(), entropy_loss.item(), critic_loss.item()

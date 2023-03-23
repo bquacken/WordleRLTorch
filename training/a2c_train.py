@@ -3,6 +3,7 @@ import numpy as np
 import torch
 from tqdm import tqdm
 from datetime import datetime
+import wandb
 
 from config import params
 from models.a2c import ActorCritic
@@ -45,6 +46,7 @@ def train_model(epochs,
     :   Whether to benchmark the model after training
     :return: None
     """
+
     if model_str == 'mlp':
         model = ActorCritic(mode, dev)
     elif model_str == 'transformer':
@@ -62,21 +64,31 @@ def train_model(epochs,
     else:
         answers = total_words[:2309]
 
-    para_env = ParallelEnvironments(params['parallel_workers'], model_str, mode)
+    para_env = ParallelEnvironments(6, model_str, mode)
 
     rewards_list = []
     first_turn_rewards = []
     actor_loss_list = []
     critic_loss_list = []
 
+    params['model'] = model_str
+    params['resume'] = resume
+    wandb.init(project='WordleRL', config=params)
+
     faulthandler.enable()
     for ep in tqdm(range(1, epochs + 1)):
         para_env.load_weights(model.state_dict())
         memory, rewards, first_rewards = para_env.parallel_simulate(batch_size, answers)
 
-        actor_loss, critic_loss = model.train_on_batch(memory)
+        policy_loss, entropy_loss, critic_loss = model.train_on_batch(memory)
 
-        actor_loss_list.append(actor_loss)
+        wandb.log({
+            'epoch': ep,
+            'policy_loss': policy_loss,
+            'entropy_loss': entropy_loss,
+            'critic_loss': critic_loss
+        })
+        actor_loss_list.append(policy_loss - entropy_loss)
         critic_loss_list.append(critic_loss)
         rewards_list += rewards
         first_turn_rewards += first_rewards
@@ -86,7 +98,8 @@ def train_model(epochs,
             print(f'benchmark {ep // 2000}')
             model.cpu()
             model.word_matrix = model.word_matrix.cpu()
-            benchmark_model(model, answers)
+            wins, avg_score = benchmark_model(model, answers)
+            wandb.log({'epoch': ep, 'wins': wins, 'avg_score': avg_score})
             model.cuda()
             model.word_matrix = model.word_matrix.cuda()
 
@@ -127,7 +140,7 @@ def train_model(epochs,
     ax4.set_title('Average Rewards from first turn')
     ax4.plot(avg_first_rewards)
     fig.savefig(f'training/plots/{model_str}_rewards_losses_{now}.jpeg')
-    plt.show()
+    # plt.show()
 
     if not save:
         save = input('Do you want to save models weights? Y for yes, N for No: ')

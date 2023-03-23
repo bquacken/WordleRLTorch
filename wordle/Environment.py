@@ -81,9 +81,9 @@ class Environment:
         __ = self.wordle.guess(self.total_words[action])
         self.guess_to_state()
         reward = 0
-        if self.num_guesses == 1:
+        if self.num_guesses == 1 and params['info_reward']:
             info = 5*self.bits_info[action][0] / np.max(self.bits_info)
-            reward += 0*info # Add this in later
+            reward += info
         if self.wordle.win:
             # Reward more for faster wins
             reward += self.reward_win*(7 - self.num_guesses)
