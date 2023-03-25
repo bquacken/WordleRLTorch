@@ -16,6 +16,7 @@ class ParallelEnvironments:
             self.models = [ActorCritic(mode, dev='cpu') for _ in range(self.num_workers)]
         elif model_str == 'transformer':
             self.models = [ActorCriticTransformer(mode, dev='cpu') for _ in range(self.num_workers)]
+        self.rand_threshold = 0.05 if mode =='easy' else 0.15
 
     def load_weights(self, model_weights):
         for i in range(self.num_workers):
@@ -33,7 +34,7 @@ class ParallelEnvironments:
         for _ in range(num_games):
             total_training_rewards = 0
             rand = np.random.uniform(0, 1, 1)[0]
-            if losing_word_list == [] or rand > 0.05:
+            if losing_word_list == [] or rand > self.rand_threshold:
                 env.reset(np.random.choice(answers, 1)[0])
             else:
                 env.reset(losing_word_list.pop(0))
