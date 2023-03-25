@@ -1,8 +1,6 @@
-import matplotlib.pyplot as plt
 import numpy as np
 import torch
 from tqdm import tqdm
-from datetime import datetime
 import wandb
 
 from config import params
@@ -73,7 +71,10 @@ def train_model(epochs,
 
     params['model'] = model_str
     params['resume'] = resume
+    params['mode'] = mode
     wandb.init(project='WordleRL', config=params)
+
+    wandb.watch(model, log='all', log_freq=25, log_graph=False)
 
     faulthandler.enable()
     for ep in tqdm(range(1, epochs + 1)):
@@ -86,7 +87,8 @@ def train_model(epochs,
             'epoch': ep,
             'policy_loss': policy_loss,
             'entropy_loss': entropy_loss,
-            'critic_loss': critic_loss
+            'critic_loss': critic_loss,
+            'rewards': np.mean(rewards)
         })
         actor_loss_list.append(policy_loss - entropy_loss)
         critic_loss_list.append(critic_loss)
@@ -128,19 +130,6 @@ def train_model(epochs,
     np.save('avg_rewards', avg_rewards)
     np.save('avg_first_rewards', avg_first_rewards)
 
-    now = datetime.now()
-    now = now.strftime("%m&d&Y_&H:%M")
-    fig, (ax1, ax2, ax3, ax4) = plt.subplots(1, 4)
-    ax1.set_title('Actor Loss')
-    ax1.plot(actor_loss_list)
-    ax2.plot(critic_loss_list)
-    ax2.set_title('Critic Loss')
-    ax3.set_title('Average Rewards')
-    ax3.plot(avg_rewards)
-    ax4.set_title('Average Rewards from first turn')
-    ax4.plot(avg_first_rewards)
-    fig.savefig(f'training/plots/{model_str}_rewards_losses_{now}.jpeg')
-    # plt.show()
 
     if not save:
         save = input('Do you want to save models weights? Y for yes, N for No: ')
