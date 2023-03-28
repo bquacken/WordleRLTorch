@@ -30,7 +30,8 @@ class Environment:
         self.action_space = np.array(range(len(self.total_words)))
 
     def guess_to_state(self):
-        """ 
+        """
+        This is slightly outdated:
         State is as follows:
         First position is number of guesses left
         Next 26 positions is whether letter has been attempted or not
