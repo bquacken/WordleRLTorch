@@ -31,17 +31,17 @@ def train_model(epochs,
     Parameters
     ----------
     :param epochs: int
-    :   Number of epochs to train for
+       Number of epochs to train for
     :param mode: str
-    :   'easy' or 'hard'
+       'easy' or 'hard'
     :param model_str:
-    :   'mlp' or 'transformer'
+       'mlp' or 'transformer'
     :param resume:
-    :   Whether to resume training from a previous checkpoint
+       Whether to resume training from a previous checkpoint
     :param save:
-    :   Whether to save the model weights after training
+       Whether to save the model weights after training
     :param bench:
-    :   Whether to benchmark the model after training
+       Whether to benchmark the model after training
     :return: None
     """
 
@@ -74,7 +74,7 @@ def train_model(epochs,
     params['mode'] = mode
     wandb.init(project='WordleRL', config=params)
 
-    wandb.watch(model, log='all', log_freq=25, log_graph=False)
+    wandb.watch(model, log='all', log_freq=100, log_graph=False)
 
     faulthandler.enable()
     for ep in tqdm(range(1, epochs + 1)):
@@ -99,11 +99,13 @@ def train_model(epochs,
             torch.save(model.state_dict(), f'models/model_weights/{model_str}_temp_{int((ep // 2000) % 6)}')
             print(f'benchmark {ep // 2000}')
             model.cpu()
+            model.eval()
             model.word_matrix = model.word_matrix.cpu()
             wins, avg_score = benchmark_model(model, answers)
             wandb.log({'epoch': ep, 'wins': wins, 'avg_score': avg_score})
             model.cuda()
             model.word_matrix = model.word_matrix.cuda()
+            model.train()
 
     env = Environment()
     env.reset(np.random.choice(answers, 1)[0])
@@ -129,7 +131,6 @@ def train_model(epochs,
     avg_first_rewards = np.array(np.convolve(first_turn_rewards, np.ones(100) / 100)[100:-100], dtype=np.float16)
     np.save('avg_rewards', avg_rewards)
     np.save('avg_first_rewards', avg_first_rewards)
-
 
     if not save:
         save = input('Do you want to save models weights? Y for yes, N for No: ')
