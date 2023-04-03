@@ -11,10 +11,7 @@ else:
 
 
 def mlp_lr(epoch):
-    if epoch < 2000:
-        return 1
-    else:
-        return 1
+    return 1
 
 
 def compute_advantages(rewards: torch.Tensor, values: torch.Tensor, dones: torch.Tensor):
@@ -93,12 +90,13 @@ class ActorCritic(nn.Module):
         acts_advs[:, 1] = advantages
 
         self.optim.zero_grad()
-        logits, value = self.forward(states)
+        logits, value = self(states)
         char_logits = self.character_logits(states)
         policy_loss, entropy_loss = actor_loss_fn(acts_advs, logits, char_logits)
         critic_loss = critic_loss_fn(returns, values)
         loss = policy_loss - entropy_loss + critic_loss
         loss.backward()
+        nn.utils.clip_grad_value_(self.parameters(), clip_value=10.0)
         self.optim.step()
         self.scheduler.step()
         return policy_loss.item(), entropy_loss.item(), critic_loss.item()
