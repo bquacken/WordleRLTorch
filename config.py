@@ -2,9 +2,9 @@ params = dict(state_dim=448,
               easy_mode=1000,
               easy_guess=1000,
               batch_size=500,
-              critic_loss_weight =0.6,
+              critic_loss_weight=0.6,
               entropy_weight=0.01,
               mlp_lr=1e-4,
               transformer_lr=1e-5,
-              char_logit=True,
-              info_reward=True)
+              char_logit=False,
+              info_reward=False)
