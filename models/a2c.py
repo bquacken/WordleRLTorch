@@ -35,7 +35,7 @@ class ActorCritic(nn.Module):
         self.device = torch.device(dev)
 
         self.d_input = params['state_dim']
-        self.d_embed = 512
+        self.d_embed = 256
         self.head = nn.Sequential(nn.Linear(self.d_input, self.d_embed), nn.Tanh(),
                                   nn.Linear(self.d_embed, self.d_embed), nn.Tanh(),
                                   nn.Linear(self.d_embed, self.d_embed), nn.Tanh())
