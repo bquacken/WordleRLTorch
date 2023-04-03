@@ -6,8 +6,6 @@ from config import params
 from models.a2c import compute_advantages
 from training.losses import actor_loss_fn, critic_loss_fn
 
-pi = torch.pi
-
 
 def transformer_lr(epoch):
     return 1
