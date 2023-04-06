@@ -57,7 +57,7 @@ class ActorCritic(nn.Module):
             self.head.cuda()
             self.value.cuda()
             self.policy.cuda()
-        self.optim = torch.optim.RMSprop(self.parameters(), lr=params['mlp_lr'])
+        self.optim = torch.optim.Adam(self.parameters(), lr=params['mlp_lr'])
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optim, mlp_lr)
 
     def forward(self, x):
@@ -67,9 +67,12 @@ class ActorCritic(nn.Module):
         policy = policy @ self.word_matrix.t()
         return policy, value
 
-    def action_value(self, state: torch.Tensor):
+    def action_value(self, state: torch.Tensor, deterministic: bool = False):
         logits, value = self.forward(state)
-        action = torch.distributions.Categorical(logits=logits).sample([1])
+        if deterministic:
+            action = torch.argmax(logits, dim=1)
+        else:
+            action = torch.distributions.Categorical(logits=logits).sample([1])
         return action, value
 
     def character_logits(self, x):
