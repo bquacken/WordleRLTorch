@@ -8,7 +8,10 @@ from training.losses import actor_loss_fn, critic_loss_fn
 
 
 def transformer_lr(epoch):
-    return 1
+    if epoch < 4000:
+        return 1
+    else:
+        return 1
 
 
 class Head(nn.Module):
@@ -101,7 +104,7 @@ class ActorCriticTransformer(nn.Module):
             self.value.cuda()
             self.policy.cuda()
 
-        self.optim = torch.optim.RMSprop(self.parameters(), lr=params['transformer_lr'])
+        self.optim = torch.optim.Adam(self.parameters(), lr=params['transformer_lr'])
         self.scheduler = torch.optim.lr_scheduler.LambdaLR(self.optim, transformer_lr)
 
     def forward(self, x):
@@ -112,9 +115,12 @@ class ActorCriticTransformer(nn.Module):
         policy = policy @ self.word_matrix.t()
         return policy, value
 
-    def action_value(self, state: torch.Tensor):
+    def action_value(self, state: torch.Tensor, deterministic: bool = False):
         logits, value = self(state)
-        action = torch.distributions.Categorical(logits=logits).sample([1])
+        if deterministic:
+            action = torch.argmax(logits, dim=1)
+        else:
+            action = torch.distributions.Categorical(logits=logits).sample([1])
         return action, value
 
     def character_logits(self, x):
