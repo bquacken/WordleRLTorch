@@ -77,7 +77,7 @@ def train_model(epochs,
     wandb.watch(model, log='all', log_freq=100, log_graph=False)
 
     faulthandler.enable()
-    for ep in tqdm(range(1, epochs + 1)):
+    for ep in tqdm(range(epochs)):
         para_env.load_weights(model.state_dict())
         memory, rewards, first_rewards = para_env.parallel_simulate(batch_size, answers)
 
@@ -101,7 +101,7 @@ def train_model(epochs,
             model.cpu()
             model.eval()
             model.word_matrix = model.word_matrix.cpu()
-            wins, avg_score = benchmark_model(model, answers)
+            wins, avg_score = benchmark_model(model, answers, deterministic=True)
             wandb.log({'epoch': ep, 'wins': wins, 'avg_score': avg_score})
             model.cuda()
             model.word_matrix = model.word_matrix.cuda()
