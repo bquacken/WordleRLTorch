@@ -16,7 +16,7 @@ class ParallelEnvironments:
             self.models = [ActorCritic(mode, dev='cpu') for _ in range(self.num_workers)]
         elif model_str == 'transformer':
             self.models = [ActorCriticTransformer(mode, dev='cpu') for _ in range(self.num_workers)]
-        self.rand_threshold = 0.05 if mode =='easy' else 0.15
+        self.rand_threshold = 0.05 if mode == 'easy' else 0.15
 
     def load_weights(self, model_weights):
         for i in range(self.num_workers):
