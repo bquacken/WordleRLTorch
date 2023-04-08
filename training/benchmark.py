@@ -6,9 +6,8 @@ import numpy as np
 from wordle import Environment
 
 
-def benchmark_model(model: nn.Module, answers, deterministic=True, return_turns=False):
+def benchmark_model(model: nn.Module, answers, deterministic=True):
     env = Environment.Environment()
-    turns = []
     wins = 0
     scores = []
     rand = np.random.randint(0, len(answers))
@@ -23,10 +22,6 @@ def benchmark_model(model: nn.Module, answers, deterministic=True, return_turns=
             if env.wordle.win:
                 wins += 1
                 scores.append(env.num_guesses)
-                turns.append(env.wordle.guess_count)
-            else:
-                turns.append(7)
-
             if i == rand:
                 print('Answer: ', env.wordle.answer)
                 print('Guesses: ', env.wordle.guesses)
@@ -35,7 +30,4 @@ def benchmark_model(model: nn.Module, answers, deterministic=True, return_turns=
     avg_score = np.mean(scores)
     print(f'Total Wins out of {len(answers)} Games: {wins}')
     print(f'Average Number of Guesses per Win: {avg_score:02f}')
-    if return_turns:
-        return wins, avg_score, turns
-    else:
-        return wins, avg_score
+    return wins, avg_score

@@ -141,3 +141,5 @@ def train_model(epochs,
     elif save:
         print('Saving Model Weights...')
         torch.save(model.state_dict(), f'models/model_weights/{model_str}_{mode}')
+
+    return
