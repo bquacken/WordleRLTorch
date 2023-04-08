@@ -60,14 +60,11 @@ The networks output a vector of length 130, where the value of each entry corres
 
 Note that the above table only considers winning games into the average. Below shows a histogram of the number of turns each strategy took to win the game, with 7 turns being a loss. 
     
-<center>    
-![hist](https://user-images.githubusercontent.com/68025393/230703014-b66cbdb5-89a0-42d7-b6b9-ae15ea4f91e8.jpeg)
+<p align='center'>
+    
+![hist](/assets/hist.jpeg)
 
-</center>​
-
-
-
-​    
+</p>
 
 
 
