@@ -11,7 +11,10 @@ else:
 
 
 def mlp_lr(epoch):
-    return 1
+    if epoch < 4000:
+        return 5
+    else:
+        return 1
 
 
 def compute_advantages(rewards: torch.Tensor, values: torch.Tensor, dones: torch.Tensor):
