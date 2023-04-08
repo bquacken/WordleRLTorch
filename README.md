@@ -5,7 +5,7 @@ This project was inspired by [3Blue1Brown's](https://www.youtube.com/watch?v=v68
 
 
 <center>    
-![mp4](assets/animation.mp4)
+![mp4](assets/animation.mov)
 </center>​
 
 # Models
