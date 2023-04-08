@@ -92,8 +92,6 @@ def train_model(epochs,
         })
         actor_loss_list.append(policy_loss - entropy_loss)
         critic_loss_list.append(critic_loss)
-        rewards_list += rewards
-        first_turn_rewards += first_rewards
 
         if ep % 2000 == 0:
             torch.save(model.state_dict(), f'models/model_weights/{model_str}_temp_{int((ep // 2000) % 6)}')
@@ -124,13 +122,6 @@ def train_model(epochs,
 
     if bench:
         benchmark_model(model, answers)
-
-    rewards_list = np.array(rewards_list)
-    avg_rewards = np.array(np.convolve(rewards_list, np.ones(100) / 100)[100:-100], dtype=np.float16)
-    first_turn_rewards = np.array(first_turn_rewards)
-    avg_first_rewards = np.array(np.convolve(first_turn_rewards, np.ones(100) / 100)[100:-100], dtype=np.float16)
-    np.save('avg_rewards', avg_rewards)
-    np.save('avg_first_rewards', avg_first_rewards)
 
     if not save:
         save = input('Do you want to save models weights? Y for yes, N for No: ')

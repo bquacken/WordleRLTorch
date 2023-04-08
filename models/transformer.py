@@ -86,8 +86,8 @@ class ActorCriticTransformer(nn.Module):
         self.device = torch.device(dev)
 
         self.d_input = params['state_dim']
-        self.d_embed = 128
-        self.num_heads = 4
+        self.d_embed = 256
+        self.num_heads = 8
         self.num_blocks = 2
 
         self.encoder = nn.Sequential(nn.Linear(self.d_input, self.d_embed), nn.ReLU())
