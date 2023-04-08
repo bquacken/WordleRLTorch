@@ -5,7 +5,9 @@ This project was inspired by [3Blue1Brown's](https://www.youtube.com/watch?v=v68
 
 
 <center>    
-<video src=assets/animation.mov width=180/>
+
+https://user-images.githubusercontent.com/68025393/230702975-829ee72c-5f94-46e0-ad49-507a4b97638a.mov
+
 </center>​
 
 # Models
