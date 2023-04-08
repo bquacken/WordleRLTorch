@@ -8,10 +8,7 @@ from training.losses import actor_loss_fn, critic_loss_fn
 
 
 def transformer_lr(epoch):
-    if epoch < 4000:
-        return 1
-    else:
-        return 1
+    return 1
 
 
 class Head(nn.Module):
@@ -86,8 +83,8 @@ class ActorCriticTransformer(nn.Module):
         self.device = torch.device(dev)
 
         self.d_input = params['state_dim']
-        self.d_embed = 128
-        self.num_heads = 4
+        self.d_embed = 256
+        self.num_heads = 8
         self.num_blocks = 2
 
         self.encoder = nn.Sequential(nn.Linear(self.d_input, self.d_embed), nn.ReLU())
