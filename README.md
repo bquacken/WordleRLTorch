@@ -5,7 +5,9 @@ This project was inspired by [3Blue1Brown's](https://www.youtube.com/watch?v=v68
 
 
 <center>    
-![mp4](assets/animation.mov)
+
+https://user-images.githubusercontent.com/68025393/230702975-829ee72c-5f94-46e0-ad49-507a4b97638a.mov
+
 </center>​
 
 # Models
@@ -58,13 +60,11 @@ The networks output a vector of length 130, where the value of each entry corres
 
 Note that the above table only considers winning games into the average. Below shows a histogram of the number of turns each strategy took to win the game, with 7 turns being a loss. 
     
-<center>    
-![jpeg](assets/hist.jpeg)
-</center>​
+<p align='center'>
+    
+![hist](/assets/hist.jpeg)
 
-
-
-​    
+</p>
 
 
 
