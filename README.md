@@ -50,11 +50,11 @@ The networks output a vector of length 130, where the value of each entry corres
 
 <center>
 
-| Model | Wins (out of 2309) | Average Score |
-| :-- | :-- | :-- |
-| 3B1B | 2309 | 3.87 |
-| MLP | 2179 | 3.91 | 
-| Transformer | 2298 | 3.78 |
+| Model | Wins (out of 2309)| Win Percentage | Average Score |
+| :-- | :-- | :-- | :-- |
+| 3B1B | 2309 | 100% | 3.87 |
+| MLP | 2179 | 94.3% | 3.91 | 
+| Transformer | 2298 | 99.5% | 3.78 |
 
 </center>
 
