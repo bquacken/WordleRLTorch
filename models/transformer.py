@@ -37,15 +37,23 @@ class Head(nn.Module):
 class MultiHead(nn.Module):
     def __init__(self, d_in, num_heads):
         super().__init__()
+        assert d_in % num_heads == 0
         self.d_in = d_in
-        self.d_embed = d_in // num_heads
         self.num_heads = num_heads
-        self.heads = nn.ModuleList([Head(d_in, self.d_embed) for _ in range(num_heads)])
-        self.out = nn.Linear(self.d_embed * num_heads, d_in)
+        self.d_embed = d_in // num_heads
+        self.qkv_layer = nn.Linear(d_in, d_in * 3)
+        self.out_layer = nn.Linear(d_in, d_in)
+        self.softmax = nn.Softmax(dim=2)
 
     def forward(self, x):
-        out = torch.cat([head(x) for head in self.heads], dim=1)
-        out = self.out(out)
+        B, D = x.size()
+        q, k, v = self.qkv_layer(x).split(self.d_in, dim=1)
+        q = q.view(B, self.num_heads, self.d_embed, 1)
+        k = k.view(B, self.num_heads, 1, self.d_embed)
+        v = v.view(B, self.num_heads, self.d_embed, 1)
+        attn = self.softmax(q @ k / self.d_embed ** 0.5)
+        attn = (attn @ v).squeeze().view(B, D)
+        out = self.out_layer(attn)
         return out
 
 
